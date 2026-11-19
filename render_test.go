@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	gansi "github.com/charmbracelet/glamour/ansi"
 	"github.com/charmbracelet/x/ansi"
+	gansi "github.com/pgDora56/mado/third_party/glamour/ansi"
 )
 
 func TestFrontMatterToCodeBlock(t *testing.T) {

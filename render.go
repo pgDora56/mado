@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/glamour"
-	gansi "github.com/charmbracelet/glamour/ansi"
 	"github.com/muesli/termenv"
+	"github.com/pgDora56/mado/third_party/glamour"
+	gansi "github.com/pgDora56/mado/third_party/glamour/ansi"
 	"github.com/rivo/uniseg"
 )
 

@@ -33,10 +33,10 @@ glamour 標準の折り返しは英文前提で、空白でしか改行しない
 Go 1.26 以降が必要（依存する golang.org/x/term の要件）。
 
 ```sh
-git clone git@github.com:pgDora56/mado.git
-cd mado
-go install .
+go install github.com/pgDora56/mado@latest
 ```
+
+手元で改造する場合は clone して `go install .`。
 
 `$(go env GOPATH)/bin` に PATH が通っていれば `mado` で起動できる。
 
@@ -123,7 +123,7 @@ go test ./...
 go build -o mado .
 ```
 
-glamour は v1.0.0 を `third_party/glamour/` に取り込み、`go.mod` の `replace` で差し替えている。上流を更新するときは `third_party/glamour/PATCHES.md` の手順で変更を当て直す。
+glamour は v1.0.0 を `third_party/glamour/` に取り込み、mado のパッケージ（`github.com/pgDora56/mado/third_party/glamour`）として使っている。`replace` を使わないのは、`go install ...@latest` でインストールできなくなるため。上流を更新するときは `third_party/glamour/PATCHES.md` の手順で変更を当て直す。
 
 ## ライセンス
 

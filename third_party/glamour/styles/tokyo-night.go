@@ -1,6 +1,6 @@
 package styles
 
-import "github.com/charmbracelet/glamour/ansi"
+import "github.com/pgDora56/mado/third_party/glamour/ansi"
 
 // TokyoNightStyleConfig is the tokyo night style.
 var TokyoNightStyleConfig = ansi.StyleConfig{

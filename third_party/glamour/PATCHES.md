@@ -1,7 +1,7 @@
 # glamour (vendored)
 
 [charmbracelet/glamour](https://github.com/charmbracelet/glamour) v1.0.0 のコピー（MIT License, `LICENSE` 参照）。
-mado の `go.mod` の `replace` でこちらを使う。Go のソース（テストを除く）・スタイル定義・`go.mod` / `go.sum`・`LICENSE` だけを持ってきている。テスト、テストデータ、サンプル・画像、CI 設定、ドキュメント類、スタイル生成スクリプト（`internal/generate-style-json`）は除いてある。
+mado モジュールの一部（import パス `github.com/pgDora56/mado/third_party/glamour`）として使う。Go のソース（テストを除く）・スタイル定義・`LICENSE` だけを持ってきている。テスト、テストデータ、サンプル・画像、CI 設定、ドキュメント類、スタイル生成スクリプト（`internal/generate-style-json`）は除いてある。
 
 ## mado による変更
 
@@ -16,4 +16,7 @@ mado の `go.mod` の `replace` でこちらを使う。Go のソース（テス
 | `ansi/elements.go` | `WrapHook` 設定時、ハード改行を `HardBreak`、ソフト改行を `SoftBreak` で出力する（リストのブロック内で、項目内の改行と項目同士の区切りを区別するため） |
 | `ansi/table.go` | `TableHook` 設定時、全行を溜めておき、罫線・余白の幅を測ったうえで `TableHook` で整形してから lipgloss に渡す |
 
-上流を更新するときは、新しい版をコピーしてから上記の変更を当て直す。
+上流を更新するときは、新しい版をコピーしてから上記の変更を当て直す。あわせて次の 2 点も行う。
+
+- 上流の `go.mod` / `go.sum` は持ち込まない（別モジュールにすると mado の `go.mod` に `replace` が必要になり、`go install github.com/pgDora56/mado@latest` が使えなくなる）
+- 全ソースの import パス `github.com/charmbracelet/glamour` を `github.com/pgDora56/mado/third_party/glamour` に置き換え、`go mod tidy` を実行する

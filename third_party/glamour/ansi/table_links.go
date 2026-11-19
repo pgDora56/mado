@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/charmbracelet/glamour/internal/autolink"
 	xansi "github.com/charmbracelet/x/ansi"
 	"github.com/charmbracelet/x/exp/slice"
+	"github.com/pgDora56/mado/third_party/glamour/internal/autolink"
 	"github.com/yuin/goldmark/ast"
 	astext "github.com/yuin/goldmark/extension/ast"
 )

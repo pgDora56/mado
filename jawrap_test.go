@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	gansi "github.com/charmbracelet/glamour/ansi"
+	gansi "github.com/pgDora56/mado/third_party/glamour/ansi"
 	"github.com/rivo/uniseg"
 )
 

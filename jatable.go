@@ -14,8 +14,8 @@ import (
 	"sort"
 	"strings"
 
-	gansi "github.com/charmbracelet/glamour/ansi"
 	xansi "github.com/charmbracelet/x/ansi"
+	gansi "github.com/pgDora56/mado/third_party/glamour/ansi"
 	"github.com/rivo/uniseg"
 )
 
