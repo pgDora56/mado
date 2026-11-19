@@ -105,6 +105,19 @@ func parseArgs(args []string) (Options, error) {
 	fsFlags.BoolVar(&opts.Help, "help", false, "")
 	fsFlags.BoolVar(&opts.Version, "version", false, "")
 
+	// -h / --help は他にどんな引数があっても (未定義のフラグが混ざっていても) ヘルプを出す。
+	// clig.dev: "you should be able to add -h to the end of anything and it should show help"
+	// flag パッケージは未定義フラグの時点でエラーを返すので、解釈前に先に探す。"--" 以降はファイル名なので見ない。
+	for _, a := range args {
+		if a == "--" {
+			break
+		}
+		if a == "-h" || a == "--help" || a == "-help" {
+			opts.Help = true
+			return opts, nil
+		}
+	}
+
 	rest := args
 	for {
 		if err := fsFlags.Parse(rest); err != nil {
@@ -138,6 +151,16 @@ func parseArgs(args []string) (Options, error) {
 	}
 	if opts.Style != "" && !contains(validStyles, opts.Style) {
 		return opts, errUsage{msg: fmt.Sprintf("unknown style %q (use one of: %s)", opts.Style, strings.Join(validStyles, ", "))}
+	}
+	stdinCount := 0
+	for _, f := range opts.Files {
+		if f == "-" {
+			stdinCount++
+		}
+	}
+	if stdinCount > 1 {
+		// stdin は一度読み切ると空になるので、2 回以上の指定は使い方の誤りとして弾く
+		return opts, errUsage{msg: "stdin ('-') can only be given once"}
 	}
 	if opts.Width < 0 {
 		return opts, errUsage{msg: fmt.Sprintf("invalid --width value %d (must be 0 or more)", opts.Width)}
@@ -231,13 +254,9 @@ type Document struct {
 // 途中で失敗したときに半端な描画を出さないよう、描画前にすべての入力を検証する。
 func loadDocuments(files []string, env Env) ([]Document, error) {
 	docs := make([]Document, 0, len(files))
-	stdinUsed := false
 	for _, f := range files {
 		if f == "-" {
-			if stdinUsed {
-				return nil, errors.New("stdin ('-') can only be given once")
-			}
-			stdinUsed = true
+			// "-" の重複は parseArgs で弾いているので、ここでは高々 1 回しか来ない
 			b, err := io.ReadAll(env.Stdin)
 			if err != nil {
 				return nil, fmt.Errorf("cannot read stdin: %w", err)

@@ -78,7 +78,17 @@ func TestParseArgs(t *testing.T) {
 		{
 			name: "help anywhere",
 			args: []string{"a.md", "-h"},
-			want: Options{Paging: "auto", Help: true, Files: []string{"a.md"}},
+			want: Options{Paging: "auto", Help: true},
+		},
+		{
+			name: "help wins over unknown flags",
+			args: []string{"--bogus", "-h"},
+			want: Options{Paging: "auto", Help: true},
+		},
+		{
+			name: "help after double dash is a file name",
+			args: []string{"--", "-h"},
+			want: Options{Paging: "auto", Files: []string{"-h"}},
 		},
 		{
 			name: "version",
@@ -89,6 +99,7 @@ func TestParseArgs(t *testing.T) {
 		{name: "invalid style", args: []string{"--style", "neon"}, wantErr: true},
 		{name: "negative width", args: []string{"-w", "-1"}, wantErr: true},
 		{name: "unknown flag", args: []string{"--bogus"}, wantErr: true},
+		{name: "stdin twice", args: []string{"-", "-"}, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -274,7 +285,7 @@ func TestRunUsageError(t *testing.T) {
 
 func TestRunStdinTwice(t *testing.T) {
 	f := &fakeEnv{}
-	if code := run([]string{"-", "-"}, f.env("x", false, false)); code != exitError {
+	if code := run([]string{"-", "-"}, f.env("x", false, false)); code != exitUsage {
 		t.Fatalf("exit code %d", code)
 	}
 }
