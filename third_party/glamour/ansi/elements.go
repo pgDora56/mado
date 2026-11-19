@@ -177,6 +177,8 @@ func (tr *ANSIRenderer) NewElement(node ast.Node, source []byte) Element {
 		switch {
 		case n.HardLineBreak() && WrapHook != nil:
 			s += HardBreak
+		case n.SoftLineBreak() && WrapHook != nil:
+			s += SoftBreak
 		case n.HardLineBreak() || n.SoftLineBreak():
 			s += "\n"
 		}

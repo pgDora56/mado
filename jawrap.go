@@ -11,8 +11,10 @@ package main
 //   - 全角文字の前後ならどこでも改行してよい。英単語や数字の途中では改行しない
 //   - 禁則処理: 句読点・閉じ括弧・小書きの仮名・長音符などは行頭に置かず、開き括弧は行末に置かない
 //     (該当する文字は前後の文字とひとまとまりにして、まとめて次の行へ送る「追い出し」方式)
-//   - 段落内のソフト改行は、前後がどちらも全角文字なら詰め、それ以外は空白 1 つにする
+//   - 段落内・リスト項目内のソフト改行は、前後がどちらも全角文字なら詰め、それ以外は空白 1 つにする
+//   - ハード改行 (行末の空白 2 つ / バックスラッシュ) は改行として残す
 //   - リスト項目の 2 行目以降は、行頭記号 (•, 1., [✓] など) の幅だけ字下げして本文の左端を揃える
+//     (幅による折り返しでも、項目内のハード改行でも同じ)
 //   - 改行位置にある空白は捨てる
 //   - 色付きの文字列を途中で改行するときは、行末で色をリセットして次の行の先頭で付け直す
 //     (ページャが行単位で表示しても色が崩れないように)
@@ -32,7 +34,8 @@ func init() {
 // wrapForGlamour は glamour から呼ばれる折り返し処理の入口。
 func wrapForGlamour(s string, width int, mode gansi.WrapMode) string {
 	if width <= 0 {
-		return strings.ReplaceAll(s, gansi.HardBreak, "\n")
+		// 折り返さない場合も、改行の目印だけは必ず消す
+		return strings.ReplaceAll(joinSoftBreaks(s, mode == gansi.WrapParagraph), gansi.HardBreak, "\n")
 	}
 	switch mode {
 	case gansi.WrapParagraph:
@@ -45,25 +48,30 @@ func wrapForGlamour(s string, width int, mode gansi.WrapMode) string {
 }
 
 // wrapParagraph は段落本文を折り返す。ソフト改行は結合し、ハード改行だけを改行として残す。
+// 段落の中の "\n" もソフト改行として扱う (WrapHook を使わない経路で作られた文字列への備え)。
 func wrapParagraph(s string, width int) string {
-	parts := strings.Split(s, gansi.HardBreak)
-	out := make([]string, len(parts))
-	for i, p := range parts {
-		joined := joinSoftBreaks(p)
-		out[i] = wrapLine(joined, width, 0, true)
-	}
-	return strings.Join(out, "\n")
+	return wrapLine(joinSoftBreaks(s, true), width, 0, true)
+}
+
+// hasBreakMarks は、行の中に glamour が埋め込んだ改行の目印があるかを返す。
+func hasBreakMarks(s string) bool {
+	return strings.Contains(s, gansi.SoftBreak) || strings.Contains(s, gansi.HardBreak)
 }
 
 // wrapLines は "\n" 区切りの各行を、幅を超えるものだけ折り返す。
 // 幅に収まる行は一切変更しない (glamour の文書全体ブロックなど、すでに整形済みの行を壊さないため)。
+// ただし改行の目印 (リスト項目内のソフト改行・ハード改行) を含む行は、幅に関係なく処理する。
 // hanging が true なら、リストの行頭記号や行頭の空白に合わせて 2 行目以降を字下げする。
 func wrapLines(s string, width int, hanging bool) string {
-	s = strings.ReplaceAll(s, gansi.HardBreak, "\n")
 	lines := strings.Split(s, "\n")
 	for i, line := range lines {
-		if uniseg.StringWidth(stripEscapes(line)) <= width {
+		marks := hasBreakMarks(line)
+		if !marks && uniseg.StringWidth(stripEscapes(line)) <= width {
 			continue
+		}
+		if marks {
+			// "\n" は行の区切りなので、ここで結合するのは目印のソフト改行だけ
+			line = joinSoftBreaks(line, false)
 		}
 		hang := 0
 		if hanging {
@@ -101,6 +109,9 @@ type cell struct {
 }
 
 func (c cell) isSpace() bool { return c.text == " " || c.text == "\t" }
+
+// isBreak は改行 (ハード改行の目印・"\n") かを返す。
+func (c cell) isBreak() bool { return c.text == gansi.HardBreak || c.text == "\n" || c.text == "\r\n" }
 
 // splitCells は文字列を cell の列と、末尾に残ったエスケープ (tail) に分解する。
 func splitCells(s string) (cells []cell, tail string) {
@@ -181,23 +192,27 @@ func stripEscapes(s string) string {
 
 // ---- ソフト改行の結合 ----
 
-// joinSoftBreaks は段落内の "\n" (ソフト改行) を結合する。
+// joinSoftBreaks はソフト改行の目印 (gansi.SoftBreak) を結合する。newlineIsSoft が true なら "\n" も
+// ソフト改行として扱う (段落用。ブロックでは "\n" は行の区切りなので false)。
 // 前後の文字がどちらも全角なら詰め、そうでなければ空白 1 つにする
 // (CSS Text Level 4 の segment break の扱いと同じ考え方)。
-func joinSoftBreaks(s string) string {
-	if !strings.Contains(s, "\n") {
+func joinSoftBreaks(s string, newlineIsSoft bool) string {
+	if !strings.Contains(s, gansi.SoftBreak) && !(newlineIsSoft && strings.Contains(s, "\n")) {
 		return s
+	}
+	isSoft := func(c cell) bool {
+		return c.text == gansi.SoftBreak || (newlineIsSoft && (c.text == "\n" || c.text == "\r\n"))
 	}
 	cells, tail := splitCells(s)
 	var b strings.Builder
 	for i, c := range cells {
-		if c.text != "\n" && c.text != "\r\n" {
+		if !isSoft(c) {
 			b.WriteString(c.pre)
 			b.WriteString(c.text)
 			continue
 		}
 		b.WriteString(c.pre)
-		prev, next := visibleNeighbor(cells, i, -1), visibleNeighbor(cells, i, +1)
+		prev, next := visibleNeighbor(cells, i, -1, isSoft), visibleNeighbor(cells, i, +1, isSoft)
 		if prev != nil && next != nil && prev.width == 2 && next.width == 2 {
 			continue // 全角同士: 詰める
 		}
@@ -210,12 +225,17 @@ func joinSoftBreaks(s string) string {
 	return b.String()
 }
 
-// visibleNeighbor は cells[i] から dir 方向に見て最初の改行でない文字を返す。
-func visibleNeighbor(cells []cell, i, dir int) *cell {
+// visibleNeighbor は cells[i] から dir 方向に見て最初のソフト改行でない文字を返す。
+// ハード改行や行の区切りに突き当たったら、そこが端なので nil を返す。
+func visibleNeighbor(cells []cell, i, dir int, isSoft func(cell) bool) *cell {
 	for j := i + dir; j >= 0 && j < len(cells); j += dir {
-		if cells[j].text != "\n" {
-			return &cells[j]
+		if isSoft(cells[j]) {
+			continue
 		}
+		if cells[j].isBreak() {
+			return nil
+		}
+		return &cells[j]
 	}
 	return nil
 }
@@ -250,11 +270,12 @@ func canBreakBetween(a, b cell) bool {
 
 // ---- 折り返し本体 ----
 
-// unit は途中で改行しない文字のまとまり。空白は 1 文字ずつ独立した unit にする。
+// unit は途中で改行しない文字のまとまり。空白と強制改行は 1 文字ずつ独立した unit にする。
 type unit struct {
 	cells []cell
 	width int
 	space bool
+	hard  bool // 強制改行 (ハード改行の目印、または "\n")
 }
 
 // buildUnits は cell 列を、改行してよい位置で unit に区切る。
@@ -265,9 +286,13 @@ func buildUnits(cells []cell) []unit {
 			units = append(units, unit{cells: []cell{c}, width: c.width, space: true})
 			continue
 		}
+		if c.isBreak() {
+			units = append(units, unit{cells: []cell{c}, hard: true})
+			continue
+		}
 		if len(units) > 0 {
 			last := &units[len(units)-1]
-			if !last.space && !canBreakBetween(cells[i-1], c) {
+			if !last.space && !last.hard && !canBreakBetween(cells[i-1], c) {
 				last.cells = append(last.cells, c)
 				last.width += c.width
 				continue
@@ -326,7 +351,7 @@ func (w *lineWriter) newline() {
 	w.width = len(w.hang)
 }
 
-// wrapLine は改行を含まない 1 行を width で折り返す。
+// wrapLine は 1 行を width で折り返す。行の中の強制改行 (ハード改行の目印・"\n") では必ず改行する。
 // hang は 2 行目以降の字下げ幅 (1 行目の先頭 hang 桁は行頭記号としてそのまま出す)。
 // trimEnd が true なら行末の空白を捨てる (段落用)。
 func wrapLine(line string, width, hang int, trimEnd bool) string {
@@ -343,11 +368,29 @@ func wrapLine(line string, width, hang int, trimEnd bool) string {
 	// 改行位置で捨てる可能性がある空白。次の塊が同じ行に収まったときだけ出力する。
 	// 折り返した直後は必ず塊を書くので、行頭に空白が残ることはない。
 	var pending []cell
+	// 強制改行の直後は true。次の行の先頭に空白を出さないために使う
+	afterHard := false
 	for _, u := range buildUnits(cells[i:]) {
+		if u.hard {
+			// 改行の前の空白は捨て、字下げと色の付け直しつきで改行する
+			for _, p := range pending {
+				w.writeEscapes(p.pre)
+			}
+			pending = pending[:0]
+			w.writeEscapes(u.cells[0].pre)
+			w.newline()
+			afterHard = true
+			continue
+		}
 		if u.space {
+			if afterHard {
+				w.writeEscapes(u.cells[0].pre)
+				continue
+			}
 			pending = append(pending, u.cells[0])
 			continue
 		}
+		afterHard = false
 		pw := 0
 		for _, p := range pending {
 			pw += p.width

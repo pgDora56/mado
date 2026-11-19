@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/glamour"
+	gansi "github.com/charmbracelet/glamour/ansi"
 	"github.com/muesli/termenv"
 	"github.com/rivo/uniseg"
 )
@@ -38,7 +39,7 @@ func renderDocuments(docs []Document, cfg RenderConfig) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("%s: %w", d.Name, err)
 		}
-		buf.WriteString(out)
+		buf.WriteString(removeBreakMarks(out))
 	}
 	return buf.String(), nil
 }
@@ -58,6 +59,13 @@ func newRenderer(cfg RenderConfig) (*glamour.TermRenderer, error) {
 		// :tada: のような絵文字ショートコードを展開する (GitHub と同じ見え方に寄せる)
 		glamour.WithEmoji(),
 	)
+}
+
+// removeBreakMarks は、折り返しフックを通らずに残った改行の目印を通常の文字に戻す。
+// 目印はフック内で必ず消える想定だが、glamour の想定外の経路 (画像の代替テキスト等) で
+// 残ると端末に見えない制御文字が出るので、念のため最後に置き換える。
+func removeBreakMarks(s string) string {
+	return strings.NewReplacer(gansi.HardBreak, "\n", gansi.SoftBreak, " ").Replace(s)
 }
 
 // fileHeader は複数ファイル表示時の区切り見出しを作る。

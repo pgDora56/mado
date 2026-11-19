@@ -238,3 +238,117 @@ Markdown をターミナルでサッと確認するための閲覧専用ビュ�
 		}
 	}
 }
+
+func TestWrapParagraphSoftBreakMark(t *testing.T) {
+	// glamour は WrapHook 設定時、ソフト改行を "\n" ではなく SoftBreak の目印で渡してくる
+	tests := []struct{ in, want string }{
+		{in: "日本語の" + gansi.SoftBreak + "段落", want: "日本語の段落"},
+		{in: "hello" + gansi.SoftBreak + "world", want: "hello world"},
+	}
+	for _, tt := range tests {
+		if got := stripEscapes(wrapParagraph(tt.in, 80)); got != tt.want {
+			t.Errorf("%q: got %q, want %q", tt.in, got, tt.want)
+		}
+	}
+}
+
+func TestWrapParagraphHardBreakDropsSurroundingSpaces(t *testing.T) {
+	// 改行の前後の空白は行末・行頭に残さない
+	got := stripEscapes(wrapParagraph("一行目 "+gansi.HardBreak+" 二行目", 80))
+	if got != "一行目\n二行目" {
+		t.Errorf("got %q", got)
+	}
+}
+
+func TestWrapLinesListItemSoftBreak(t *testing.T) {
+	// リストのブロックでは "\n" は項目同士の区切りなので残し、項目内の目印だけ結合する
+	in := "• 一行目の文章" + gansi.SoftBreak + "二行目\n• English" + gansi.SoftBreak + "line"
+	got := stripEscapes(wrapLines(in, 80, true))
+	if want := "• 一行目の文章二行目\n• English line"; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestWrapLinesListItemHardBreakIsIndented(t *testing.T) {
+	// 幅に収まる行でも、項目内のハード改行は行頭記号の幅だけ字下げして改行する
+	tests := []struct{ in, want string }{
+		{in: "• 一行目" + gansi.HardBreak + "二行目", want: "• 一行目\n  二行目"},
+		{in: "    • 入れ子" + gansi.HardBreak + "続き", want: "    • 入れ子\n      続き"},
+		{in: "10. 番号" + gansi.HardBreak + "続き", want: "10. 番号\n    続き"},
+	}
+	for _, tt := range tests {
+		if got := stripEscapes(wrapLines(tt.in, 40, true)); got != tt.want {
+			t.Errorf("got %q, want %q", got, tt.want)
+		}
+	}
+}
+
+func TestWrapLinesHardBreakThenWrapKeepsIndent(t *testing.T) {
+	// ハード改行の後の行が幅を超えても、折り返しの字下げはそろったまま
+	in := "• 短い" + gansi.HardBreak + strings.Repeat("あ", 30)
+	out := wrapLines(in, 20, true)
+	lines := plainLines(out)
+	if len(lines) < 3 {
+		t.Fatalf("expected wrapping: %q", lines)
+	}
+	for _, l := range lines[1:] {
+		if !strings.HasPrefix(l, "  あ") {
+			t.Errorf("continuation should be indented by 2: %q", lines)
+		}
+	}
+	assertFits(t, out, 20)
+}
+
+func TestWrapRestoresColorAcrossHardBreak(t *testing.T) {
+	in := "• \x1b[1m太字" + gansi.HardBreak + "続き\x1b[0m"
+	lines := strings.Split(wrapLines(in, 40, true), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("want 2 lines, got %q", lines)
+	}
+	if !strings.HasSuffix(lines[0], "\x1b[0m") || !strings.HasPrefix(lines[1], "  \x1b[1m") {
+		t.Errorf("color should be reset and restored after the indent: %q", lines)
+	}
+}
+
+func TestWrapForGlamourWithoutWidthRemovesMarks(t *testing.T) {
+	// 折り返し幅が無い場合も、目印は必ず消す
+	in := "• 一" + gansi.SoftBreak + "二" + gansi.HardBreak + "三\n• 四"
+	got := wrapForGlamour(in, 0, gansi.WrapBlock)
+	if want := "• 一二\n三\n• 四"; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+// 実際の glamour 描画で、リスト項目内のソフト改行が結合され、ハード改行が字下げされること。
+func TestRenderListItemBreaks(t *testing.T) {
+	doc := "- 一行目の文章\n  二行目は詰める\n- ハード改行の行  \n  ここは字下げされる\n- English line\n  continues\n"
+	out, err := renderDocuments([]Document{{Name: "a", Content: []byte(doc)}},
+		RenderConfig{Style: "notty", Width: 60, Color: false})
+	if err != nil {
+		t.Fatal(err)
+	}
+	plain := stripEscapes(out)
+	for _, want := range []string{"• 一行目の文章二行目は詰める", "• ハード改行の行", "• English line continues"} {
+		if !strings.Contains(plain, want) {
+			t.Errorf("missing %q in:\n%s", want, plain)
+		}
+	}
+	// ハード改行の次の行は、行頭記号 "• " の後ろ (本文の左端) から始まる
+	lines := strings.Split(plain, "\n")
+	for i, l := range lines {
+		if !strings.Contains(l, "• ハード改行の行") || i+1 >= len(lines) {
+			continue
+		}
+		bodyCol := uniseg.StringWidth(l[:strings.Index(l, "ハード")])
+		next := lines[i+1]
+		if !strings.HasPrefix(strings.TrimLeft(next, " "), "ここは字下げされる") {
+			t.Errorf("unexpected continuation: %q", next)
+		}
+		if got := len(next) - len(strings.TrimLeft(next, " ")); got != bodyCol {
+			t.Errorf("continuation indent = %d, want %d:\n%s", got, bodyCol, plain)
+		}
+	}
+	if strings.ContainsAny(out, gansi.HardBreak+gansi.SoftBreak) {
+		t.Errorf("break marks leaked: %q", out)
+	}
+}

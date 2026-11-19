@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	gansi "github.com/charmbracelet/glamour/ansi"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -113,6 +114,13 @@ func TestTruncateLeft(t *testing.T) {
 	}
 	// 全角は幅 2 として数える
 	if got := truncateLeft("あいうえお", 6); got != "…えお" {
+		t.Errorf("got %q", got)
+	}
+}
+
+func TestRemoveBreakMarks(t *testing.T) {
+	in := "a" + gansi.HardBreak + "b" + gansi.SoftBreak + "c"
+	if got := removeBreakMarks(in); got != "a\nb c" {
 		t.Errorf("got %q", got)
 	}
 }

@@ -21,6 +21,10 @@ type TableElement struct {
 
 	tableImages []tableLink
 	tableLinks  []tableLink
+
+	// mado: TableHook 用。全行 (先頭はヘッダ) を溜めておき、Finish でまとめて整形してから lipgloss に渡す
+	pending   [][]string
+	wrapWidth int
 }
 
 // A TableRowElement is used to render a single row in a table.
@@ -64,6 +68,8 @@ func (e *TableElement) Render(w io.Writer, ctx RenderContext) error {
 		wrap = *ctx.options.TableWrap
 	}
 	ctx.table.lipgloss = table.New().Width(width).Wrap(wrap)
+	ctx.table.wrapWidth = width
+	ctx.table.pending = nil
 
 	if err := e.collectLinksAndImages(ctx); err != nil {
 		return err
@@ -130,6 +136,18 @@ func (e *TableElement) Finish(_ io.Writer, ctx RenderContext) error {
 	e.setStyles(ctx)
 	e.setBorders(ctx)
 
+	// mado: セルを整形してから lipgloss に渡す
+	if TableHook != nil && len(ctx.table.pending) > 0 {
+		cols := len(ctx.table.pending[0])
+		overhead := e.measureOverhead(ctx, cols)
+		cells := TableHook(ctx.table.pending, ctx.table.wrapWidth, overhead)
+		ctx.table.lipgloss.Headers(cells[0]...)
+		for _, row := range cells[1:] {
+			ctx.table.lipgloss.Row(row...)
+		}
+		ctx.table.pending = nil
+	}
+
 	ow := ctx.blockStack.Current().Block
 	if _, err := ow.WriteString(ctx.table.lipgloss.String()); err != nil {
 		return fmt.Errorf("glamour: error writing to buffer: %w", err)
@@ -143,9 +161,33 @@ func (e *TableElement) Finish(_ io.Writer, ctx RenderContext) error {
 	return nil
 }
 
+// measureOverhead は、この表の罫線と余白が占める幅を測る (mado による追加)。
+// 同じスタイル・罫線で各セルが幅 1 の表を描いて、セルの幅の合計を引く。
+func (e *TableElement) measureOverhead(ctx RenderContext, cols int) int {
+	saved := ctx.table.lipgloss
+	defer func() { ctx.table.lipgloss = saved }()
+
+	ctx.table.lipgloss = table.New()
+	e.setStyles(ctx)
+	e.setBorders(ctx)
+	probe := make([]string, cols)
+	for i := range probe {
+		probe[i] = "x"
+	}
+	ctx.table.lipgloss.Headers(probe...)
+	return lipgloss.Width(ctx.table.lipgloss.String()) - cols
+}
+
 // Finish finishes rendering a TableRowElement.
 func (e *TableRowElement) Finish(_ io.Writer, ctx RenderContext) error {
 	if ctx.table.lipgloss == nil {
+		return nil
+	}
+
+	if TableHook != nil {
+		// mado: 表全体の列幅を決めてから整形するので、ここでは溜めるだけ
+		ctx.table.pending = append(ctx.table.pending, ctx.table.row)
+		ctx.table.row = []string{}
 		return nil
 	}
 
@@ -157,6 +199,13 @@ func (e *TableRowElement) Finish(_ io.Writer, ctx RenderContext) error {
 // Finish finishes rendering a TableHeadElement.
 func (e *TableHeadElement) Finish(_ io.Writer, ctx RenderContext) error {
 	if ctx.table.lipgloss == nil {
+		return nil
+	}
+
+	if TableHook != nil {
+		// mado: ヘッダは pending の先頭に置く
+		ctx.table.pending = append([][]string{ctx.table.header}, ctx.table.pending...)
+		ctx.table.header = []string{}
 		return nil
 	}
 
