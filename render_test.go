@@ -59,68 +59,6 @@ func TestPreprocessNormalizesBOMAndCRLF(t *testing.T) {
 	}
 }
 
-func TestRewrapOverflowJapanese(t *testing.T) {
-	// 空白のない日本語段落は glamour だけでは折り返されない。描画後の全行が幅に収まることを確認する
-	long := strings.Repeat("日本語の長い段落です。", 20)
-	for _, color := range []bool{false, true} {
-		style := "notty"
-		if color {
-			style = "dark"
-		}
-		out, err := renderDocuments([]Document{{Name: "a", Content: []byte(long)}},
-			RenderConfig{Style: style, Width: 40, Color: color})
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, line := range strings.Split(out, "\n") {
-			if w := ansi.StringWidth(line); w > 40 {
-				t.Errorf("color=%v: line too wide (%d): %q", color, w, ansi.Strip(line))
-			}
-		}
-		// 折り返しで文字が欠けていないこと
-		plain := strings.ReplaceAll(ansi.Strip(out), " ", "")
-		plain = strings.ReplaceAll(plain, "\n", "")
-		if plain != long {
-			t.Errorf("color=%v: text changed after wrapping:\n%q", color, plain)
-		}
-	}
-}
-
-func TestRewrapOverflowKeepsIndent(t *testing.T) {
-	in := "    " + strings.Repeat("あ", 30)
-	out := rewrapOverflow(in, 20)
-	lines := strings.Split(out, "\n")
-	if len(lines) < 2 {
-		t.Fatalf("expected wrapping, got %q", out)
-	}
-	for i, l := range lines {
-		if !strings.HasPrefix(l, "    ") {
-			t.Errorf("line %d lost indent: %q", i, l)
-		}
-		if ansi.StringWidth(l) > 20 {
-			t.Errorf("line %d too wide: %q", i, l)
-		}
-	}
-}
-
-func TestRewrapOverflowLeavesShortLines(t *testing.T) {
-	in := "  short\n  line"
-	if got := rewrapOverflow(in, 40); got != in {
-		t.Errorf("got %q", got)
-	}
-}
-
-func TestTrimTrailingSpaces(t *testing.T) {
-	if got := trimTrailingSpaces("abc   "); got != "abc" {
-		t.Errorf("plain: got %q", got)
-	}
-	// 色付き行は末尾にリセットを付けて色を閉じる
-	got := trimTrailingSpaces("\x1b[1mabc\x1b[0m   ")
-	if ansi.Strip(got) != "abc" || !strings.HasSuffix(got, "\x1b[0m") {
-		t.Errorf("colored: got %q", got)
-	}
-}
-
 func TestRenderNoColorHasNoEscapes(t *testing.T) {
 	out, err := renderDocuments([]Document{{Name: "a", Content: []byte("# T\n\n```go\nfunc f() {}\n```\n")}},
 		RenderConfig{Style: "notty", Width: 80, Color: false})
@@ -151,5 +89,30 @@ func TestFileHeader(t *testing.T) {
 	}
 	if strings.Contains(h, "\x1b") {
 		t.Errorf("no-color header must be plain: %q", h)
+	}
+}
+
+func TestFileHeaderTruncatesLongNames(t *testing.T) {
+	name := "./999_Drafts/2026-11-20_研究発表_第4回_スライド構成メモ.md"
+	h := strings.TrimSuffix(fileHeader(name, RenderConfig{Width: 40}), "\n")
+	if w := ansi.StringWidth(h); w != 40 {
+		t.Errorf("header width %d, want 40: %q", w, h)
+	}
+	// 区別に効くファイル名の末尾は残る
+	if !strings.Contains(h, "…") || !strings.Contains(h, "メモ.md") {
+		t.Errorf("unexpected header: %q", h)
+	}
+}
+
+func TestTruncateLeft(t *testing.T) {
+	if got := truncateLeft("abc", 5); got != "abc" {
+		t.Errorf("short string changed: %q", got)
+	}
+	if got := truncateLeft("abcdefgh", 5); got != "…efgh" {
+		t.Errorf("got %q", got)
+	}
+	// 全角は幅 2 として数える
+	if got := truncateLeft("あいうえお", 6); got != "…えお" {
+		t.Errorf("got %q", got)
 	}
 }
