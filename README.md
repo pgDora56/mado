@@ -124,3 +124,9 @@ go build -o mado .
 ```
 
 glamour は v1.0.0 を `third_party/glamour/` に取り込み、`go.mod` の `replace` で差し替えている。上流を更新するときは `third_party/glamour/PATCHES.md` の手順で変更を当て直す。
+
+## ライセンス
+
+MIT License（`LICENSE` 参照）。コードを使う場合は、著作権表示（このリポジトリの URL を含む）を残すこと。
+
+`third_party/glamour/` は [charmbracelet/glamour](https://github.com/charmbracelet/glamour) のコピーで、元の MIT License（`third_party/glamour/LICENSE`）に従う。
