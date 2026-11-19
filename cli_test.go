@@ -159,9 +159,9 @@ func TestResolveStyle(t *testing.T) {
 	}{
 		{name: "auto by default", color: true, want: "auto"},
 		{name: "explicit style", style: "light", color: true, want: "light"},
-		{name: "env style", vars: map[string]string{"MDPEEK_STYLE": "dracula"}, color: true, want: "dracula"},
-		{name: "flag beats env", style: "light", vars: map[string]string{"MDPEEK_STYLE": "dracula"}, color: true, want: "light"},
-		{name: "invalid env is ignored", vars: map[string]string{"MDPEEK_STYLE": "neon"}, color: true, want: "auto"},
+		{name: "env style", vars: map[string]string{"MADO_STYLE": "dracula"}, color: true, want: "dracula"},
+		{name: "flag beats env", style: "light", vars: map[string]string{"MADO_STYLE": "dracula"}, color: true, want: "light"},
+		{name: "invalid env is ignored", vars: map[string]string{"MADO_STYLE": "neon"}, color: true, want: "auto"},
 		{name: "no color forces notty", style: "dark", color: false, want: "notty"},
 		{name: "ascii is kept without color", style: "ascii", color: false, want: "ascii"},
 	}
@@ -222,7 +222,7 @@ func TestRunHelpAndVersion(t *testing.T) {
 	if code := run([]string{"--version"}, f.env("", true, true)); code != exitOK {
 		t.Fatalf("exit code %d", code)
 	}
-	if !strings.HasPrefix(f.stdout.String(), "mdpeek ") {
+	if !strings.HasPrefix(f.stdout.String(), "mado ") {
 		t.Errorf("version output: %q", f.stdout.String())
 	}
 }
@@ -263,7 +263,7 @@ func TestRunMissingFile(t *testing.T) {
 	if code != exitError {
 		t.Fatalf("exit code %d, want %d", code, exitError)
 	}
-	if got := f.stderr.String(); got != "mdpeek: missing.md: no such file\n" {
+	if got := f.stderr.String(); got != "mado: missing.md: no such file\n" {
 		t.Errorf("stderr: %q", got)
 	}
 	// 1 つでも読めなければ何も出力しない (半端な描画を出さない)
@@ -278,7 +278,7 @@ func TestRunUsageError(t *testing.T) {
 	if code != exitUsage {
 		t.Fatalf("exit code %d", code)
 	}
-	if !strings.Contains(f.stderr.String(), "mdpeek --help") {
+	if !strings.Contains(f.stderr.String(), "mado --help") {
 		t.Errorf("stderr should point to --help: %q", f.stderr.String())
 	}
 }

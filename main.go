@@ -1,4 +1,4 @@
-// mdpeek は Markdown をターミナルでサッと確認するための閲覧専用ビューア。
+// mado は Markdown をターミナルでサッと確認するための閲覧専用ビューア。
 //
 // 設計方針は Command Line Interface Guidelines (https://clig.dev/) と
 // bat / glow / git といった既存 CLI の慣習に寄せている:

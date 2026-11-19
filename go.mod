@@ -1,4 +1,4 @@
-module github.com/pgDora56/mdpeek
+module github.com/pgDora56/mado
 
 go 1.26.0
 

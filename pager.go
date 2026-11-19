@@ -20,9 +20,9 @@ import (
 const defaultLessFlags = "FIRX"
 
 // resolvePager は使うページャのコマンド文字列を返す。空文字ならページャを使わない。
-// 優先順は MDPEEK_PAGER > PAGER > less。git や bat と同じく、ツール専用の変数を最優先にする。
+// 優先順は MADO_PAGER > PAGER > less。git や bat と同じく、ツール専用の変数を最優先にする。
 func resolvePager(getenv func(string) string) string {
-	for _, key := range []string{"MDPEEK_PAGER", "PAGER"} {
+	for _, key := range []string{"MADO_PAGER", "PAGER"} {
 		if v := strings.TrimSpace(getenv(key)); v != "" {
 			if v == "cat" {
 				// PAGER=cat は「ページャ不要」の慣習的な指定。cat を起動するより直接書く方が素直
@@ -46,7 +46,7 @@ func runPager(pagerCmd string, content string, getenv func(string) string) error
 	if err != nil {
 		return err
 	}
-	// ページャ表示中の Ctrl-C は less 側で処理させたい。mdpeek が先に死ぬと端末が壊れた状態で
+	// ページャ表示中の Ctrl-C は less 側で処理させたい。mado が先に死ぬと端末が壊れた状態で
 	// 残ることがあるため、待機中は SIGINT を受け流す。Notify で捕捉する方式なら子プロセスには
 	// 既定のハンドラが引き継がれる (Ignore だと SIG_IGN が子に継承されてしまう)。
 	sigCh := make(chan os.Signal, 1)

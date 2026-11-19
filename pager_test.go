@@ -15,7 +15,7 @@ func TestResolvePager(t *testing.T) {
 	}{
 		{name: "default is less", want: "less"},
 		{name: "PAGER", vars: map[string]string{"PAGER": "most"}, want: "most"},
-		{name: "MDPEEK_PAGER wins", vars: map[string]string{"PAGER": "most", "MDPEEK_PAGER": "less -S"}, want: "less -S"},
+		{name: "MADO_PAGER wins", vars: map[string]string{"PAGER": "most", "MADO_PAGER": "less -S"}, want: "less -S"},
 		{name: "PAGER=cat disables paging", vars: map[string]string{"PAGER": "cat"}, want: ""},
 		{name: "blank values are ignored", vars: map[string]string{"PAGER": "  "}, want: "less"},
 	}
@@ -82,7 +82,7 @@ func TestRunPagerEarlyExitIsNotAnError(t *testing.T) {
 
 func TestRunPagerMissingCommand(t *testing.T) {
 	// 存在しないページャは error を返し、呼び出し側が stdout へフォールバックできるようにする
-	if err := runPager("mdpeek-no-such-pager-xyz", "x", os.Getenv); err == nil {
+	if err := runPager("mado-no-such-pager-xyz", "x", os.Getenv); err == nil {
 		t.Error("expected an error for a missing pager")
 	}
 }

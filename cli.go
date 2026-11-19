@@ -44,29 +44,29 @@ type Options struct {
 	Files   []string
 }
 
-const usageText = `mdpeek - view Markdown in the terminal
+const usageText = `mado - view Markdown in the terminal
 
 Usage:
-  mdpeek [options] [FILE...]
-  cat FILE | mdpeek
+  mado [options] [FILE...]
+  cat FILE | mado
 
 Examples:
-  mdpeek README.md            render and page a file
-  mdpeek a.md b.md            view several files in a row
-  mdpeek -p never plan.md     print without a pager
-  git show HEAD:README.md | mdpeek -
+  mado README.md            render and page a file
+  mado a.md b.md            view several files in a row
+  mado -p never plan.md     print without a pager
+  git show HEAD:README.md | mado -
 
 Options:
   -p, --paging WHEN   when to use a pager: auto, always, never (default: auto)
   -s, --style NAME    color style: auto, dark, light, dracula, tokyo-night,
-                      pink, ascii, notty (default: auto, env: MDPEEK_STYLE)
+                      pink, ascii, notty (default: auto, env: MADO_STYLE)
   -w, --width N       wrap width in columns (default: terminal width, max 100)
       --no-color      disable colors (also honors NO_COLOR and TERM=dumb)
   -h, --help          show this help
       --version       show version
 
 Pager:
-  Uses $MDPEEK_PAGER, then $PAGER, then less. When LESS is unset, mdpeek
+  Uses $MADO_PAGER, then $PAGER, then less. When LESS is unset, mado
   runs less with -FIRX: short documents print directly, searches ignore case,
   and the text stays on screen after quitting (q).
 `
@@ -85,11 +85,11 @@ func (e errUsage) Error() string { return e.msg }
 
 // parseArgs は引数を解釈する。
 // Go の flag パッケージは最初の非フラグ引数で解釈を止めてしまうため、
-// `mdpeek README.md -p never` のようにファイルの後ろにフラグを書いても効くよう、
+// `mado README.md -p never` のようにファイルの後ろにフラグを書いても効くよう、
 // 非フラグ引数を拾いながら繰り返し Parse する (clig.dev の「フラグの順序を問わない」に従う)。
 func parseArgs(args []string) (Options, error) {
 	opts := Options{Paging: "auto", Style: ""}
-	fsFlags := flag.NewFlagSet("mdpeek", flag.ContinueOnError)
+	fsFlags := flag.NewFlagSet("mado", flag.ContinueOnError)
 	fsFlags.SetOutput(io.Discard) // エラーメッセージは自前で整形して出す
 	fsFlags.Usage = func() {}
 
@@ -188,7 +188,7 @@ func contains(list []string, s string) bool {
 func run(args []string, env Env) int {
 	opts, err := parseArgs(args)
 	if err != nil {
-		fmt.Fprintf(env.Stderr, "mdpeek: %s\nRun 'mdpeek --help' for usage.\n", err)
+		fmt.Fprintf(env.Stderr, "mado: %s\nRun 'mado --help' for usage.\n", err)
 		return exitUsage
 	}
 	if opts.Help {
@@ -196,7 +196,7 @@ func run(args []string, env Env) int {
 		return exitOK
 	}
 	if opts.Version {
-		fmt.Fprintf(env.Stdout, "mdpeek %s\n", version)
+		fmt.Fprintf(env.Stdout, "mado %s\n", version)
 		return exitOK
 	}
 
@@ -211,7 +211,7 @@ func run(args []string, env Env) int {
 
 	docs, err := loadDocuments(opts.Files, env)
 	if err != nil {
-		fmt.Fprintf(env.Stderr, "mdpeek: %s\n", err)
+		fmt.Fprintf(env.Stderr, "mado: %s\n", err)
 		return exitError
 	}
 
@@ -224,7 +224,7 @@ func run(args []string, env Env) int {
 		TrueColor: isTrueColor(env.Getenv("COLORTERM")),
 	})
 	if err != nil {
-		fmt.Fprintf(env.Stderr, "mdpeek: render failed: %s\n", err)
+		fmt.Fprintf(env.Stderr, "mado: render failed: %s\n", err)
 		return exitError
 	}
 
@@ -238,7 +238,7 @@ func run(args []string, env Env) int {
 		}
 	}
 	if _, err := io.WriteString(env.Stdout, out); err != nil && !isBrokenPipe(err) {
-		fmt.Fprintf(env.Stderr, "mdpeek: %s\n", err)
+		fmt.Fprintf(env.Stderr, "mado: %s\n", err)
 		return exitError
 	}
 	return exitOK
@@ -316,7 +316,7 @@ func resolveStyle(opts Options, env Env, color bool) string {
 	if opts.Style != "" {
 		return opts.Style
 	}
-	if s := env.Getenv("MDPEEK_STYLE"); s != "" && contains(validStyles, s) {
+	if s := env.Getenv("MADO_STYLE"); s != "" && contains(validStyles, s) {
 		return s
 	}
 	return "auto"

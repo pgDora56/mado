@@ -1,4 +1,4 @@
-# mdpeek
+# mado
 
 Markdown をターミナルでサッと確認するための閲覧専用ビューア。
 Claude Code が書き出した計画書・レポート・メモを、エディタを開かずに読む用途を想定している。
@@ -16,20 +16,20 @@ Claude Code が書き出した計画書・レポート・メモを、エディ�
 Go 1.26 以降が必要（依存する golang.org/x/term の要件）。
 
 ```sh
-git clone git@github.com:pgDora56/mdpeek.git
-cd mdpeek
+git clone git@github.com:pgDora56/mado.git
+cd mado
 go install .
 ```
 
-`$(go env GOPATH)/bin` に PATH が通っていれば `mdpeek` で起動できる。
+`$(go env GOPATH)/bin` に PATH が通っていれば `mado` で起動できる。
 
 ## 使い方
 
 ```sh
-mdpeek README.md                  # 描画してページャで開く
-mdpeek a.md b.md                  # 複数ファイルを続けて表示 (ファイル名の区切り行付き)
-mdpeek -p never plan.md           # ページャを使わずに出力
-git show HEAD:README.md | mdpeek  # パイプで渡す (明示するなら "-")
+mado README.md                  # 描画してページャで開く
+mado a.md b.md                  # 複数ファイルを続けて表示 (ファイル名の区切り行付き)
+mado -p never plan.md           # ページャを使わずに出力
+git show HEAD:README.md | mado  # パイプで渡す (明示するなら "-")
 ```
 
 ページャが `less`（既定）の場合の主な操作:
@@ -55,16 +55,16 @@ git show HEAD:README.md | mdpeek  # パイプで渡す (明示するなら "-")
 
 フラグはファイル名の前後どちらに書いてもよい。`--` 以降はすべてファイル名として扱う。
 
-色を付けない出力（パイプ先・`NO_COLOR`・`--no-color`）では `--style` / `MDPEEK_STYLE` は無視され、装飾なしの `notty` になる（`ascii` だけは指定どおり）。
+色を付けない出力（パイプ先・`NO_COLOR`・`--no-color`）では `--style` / `MADO_STYLE` は無視され、装飾なしの `notty` になる（`ascii` だけは指定どおり）。
 
 ### 環境変数
 
 | 変数 | 効果 |
 |---|---|
-| `MDPEEK_PAGER` | 使うページャ。`PAGER` より優先 |
-| `PAGER` | 使うページャ。`cat` を指定するとページャを使わない（`MDPEEK_PAGER=cat` も同様）。空の変数は未設定扱い |
-| `LESS` | ページャが less で `LESS` が未設定なら、mdpeek が `FIRX` を設定する。設定済みならそのまま使う（色を出すには `R` を含めること） |
-| `MDPEEK_STYLE` | `--style` の既定値（不正な値は無視して `auto`） |
+| `MADO_PAGER` | 使うページャ。`PAGER` より優先 |
+| `PAGER` | 使うページャ。`cat` を指定するとページャを使わない（`MADO_PAGER=cat` も同様）。空の変数は未設定扱い |
+| `LESS` | ページャが less で `LESS` が未設定なら、mado が `FIRX` を設定する。設定済みならそのまま使う（色を出すには `R` を含めること） |
+| `MADO_STYLE` | `--style` の既定値（不正な値は無視して `auto`） |
 | `NO_COLOR` | 空でなければ色を付けない |
 
 ### 終了コード
@@ -82,23 +82,23 @@ CLI の一般的な作法は [Command Line Interface Guidelines (clig.dev)](http
 
 | 項目 | 振る舞い | 根拠 |
 |---|---|---|
-| ページャ | `--paging auto` では stdout が端末のときだけ `less -FIRX` に流す。パイプやリダイレクトでは使わない | `-FIRX` は clig.dev が挙げる less のオプション（`-F` で短い文書はページャを開かない）。clig.dev の条件は「stdin か stdout が端末」だが、mdpeek は出力をパイプに流す使い方を壊さないよう stdout のみで判定する |
-| 色 | stdout が端末でない / `NO_COLOR` が空でない / `TERM=dumb` / `--no-color` のいずれかで無効 | clig.dev の色の無効化条件。clig.dev は stderr の判定も挙げるが、mdpeek は色付きの出力を stdout にしか出さないので stdout のみ見る |
+| ページャ | `--paging auto` では stdout が端末のときだけ `less -FIRX` に流す。パイプやリダイレクトでは使わない | `-FIRX` は clig.dev が挙げる less のオプション（`-F` で短い文書はページャを開かない）。clig.dev の条件は「stdin か stdout が端末」だが、mado は出力をパイプに流す使い方を壊さないよう stdout のみで判定する |
+| 色 | stdout が端末でない / `NO_COLOR` が空でない / `TERM=dumb` / `--no-color` のいずれかで無効 | clig.dev の色の無効化条件。clig.dev は stderr の判定も挙げるが、mado は色付きの出力を stdout にしか出さないので stdout のみ見る |
 | 標準入力 | ファイル名に `-` を指定するか、引数なしでパイプ入力すると stdin を読む。引数なしで端末から起動した場合は入力を待たずに使い方を stderr に出して終了（終了コード 2） | clig.dev |
 | ヘルプ | `-h` / `--help` は他の引数（未定義のフラグを含む）があっても優先してヘルプを出す。冒頭に使用例を載せる | clig.dev |
-| バージョン | `--version` のみ。`-v` は割り当てない | clig.dev は `-v` が verbose と version のどちらにも取られうると指摘し、混同を避けて何も割り当てない選択肢も挙げている。mdpeek はそれに従った |
-| エラー | stderr に `mdpeek: ` で始まる人間向けの文で出す（ファイル系は `mdpeek: <path>: <理由>`）。使い方の誤りでは 2 行目で `--help` を案内 | clig.dev の「エラーを捕まえて人間向けに書き直す」。形式自体は mdpeek の設計 |
-| ページャの選択 | `MDPEEK_PAGER` → `PAGER` → `less` の順。コマンド文字列は `sh -c` で解釈。起動できなければ stdout に直接出す | git（`GIT_PAGER` → `core.pager` → `PAGER` → 既定の less）と同様に専用変数を最優先にする。なお LESS 未設定時に git が補うのは `FRX`、mdpeek は `FIRX` |
-| 複数ファイル | ファイル名入りの区切り行を挟んで連結（パイプ出力でも出す） | bat がファイルごとにファイル名のヘッダを出すのに倣った（見た目は mdpeek 独自） |
+| バージョン | `--version` のみ。`-v` は割り当てない | clig.dev は `-v` が verbose と version のどちらにも取られうると指摘し、混同を避けて何も割り当てない選択肢も挙げている。mado はそれに従った |
+| エラー | stderr に `mado: ` で始まる人間向けの文で出す（ファイル系は `mado: <path>: <理由>`）。使い方の誤りでは 2 行目で `--help` を案内 | clig.dev の「エラーを捕まえて人間向けに書き直す」。形式自体は mado の設計 |
+| ページャの選択 | `MADO_PAGER` → `PAGER` → `less` の順。コマンド文字列は `sh -c` で解釈。起動できなければ stdout に直接出す | git（`GIT_PAGER` → `core.pager` → `PAGER` → 既定の less）と同様に専用変数を最優先にする。なお LESS 未設定時に git が補うのは `FRX`、mado は `FIRX` |
+| 複数ファイル | ファイル名入りの区切り行を挟んで連結（パイプ出力でも出す） | bat がファイルごとにファイル名のヘッダを出すのに倣った（見た目は mado 独自） |
 
 ## 既知の制約
 
-- 空白なしで日本語に直結した URL（`[リンク](https://example.com)。続く文…`）は、URL の途中で改行されることがある（mdpeek 側の再折り返しを外しても再現するので、glamour の折り返しで起きている）
-- `--style auto` は端末に背景色を問い合わせる。対応していない端末では判定に少し時間がかかったり、dark になったりする。気になる場合は `MDPEEK_STYLE` で固定する
+- 空白なしで日本語に直結した URL（`[リンク](https://example.com)。続く文…`）は、URL の途中で改行されることがある（mado 側の再折り返しを外しても再現するので、glamour の折り返しで起きている）
+- `--style auto` は端末に背景色を問い合わせる。対応していない端末では判定に少し時間がかかったり、dark になったりする。気になる場合は `MADO_STYLE` で固定する
 
 ## 開発
 
 ```sh
 go test ./...
-go build -o mdpeek .
+go build -o mado .
 ```
