@@ -1,7 +1,7 @@
 # glamour (vendored)
 
 [charmbracelet/glamour](https://github.com/charmbracelet/glamour) v1.0.0 のコピー（MIT License, `LICENSE` 参照）。
-mado の `go.mod` の `replace` でこちらを使う。テスト・サンプル・画像は除いてある。
+mado の `go.mod` の `replace` でこちらを使う。Go のソース（テストを除く）・スタイル定義・`go.mod` / `go.sum`・`LICENSE` だけを持ってきている。テスト、テストデータ、サンプル・画像、CI 設定、ドキュメント類、スタイル生成スクリプト（`internal/generate-style-json`）は除いてある。
 
 ## mado による変更
 

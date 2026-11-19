@@ -76,7 +76,8 @@ func wrapLines(s string, width int, hanging bool) string {
 
 // listMarker は glamour が出力するリストの行頭 (字下げ + 記号) にマッチする。
 // 箇条書き "• "、番号付き "1. "、タスク "[✓] " / "[ ] " に対応。
-var listMarker = regexp.MustCompile(`^ *(?:• |\d+\. |\[[ ✓]\] )?`)
+// ascii / notty スタイル (色なし出力) ではチェック済みタスクが "[x] " になるので、それも含める。
+var listMarker = regexp.MustCompile(`^ *(?:• |\d+\. |\[[ ✓x]\] )?`)
 
 // hangingIndent は 2 行目以降の字下げ幅を返す。
 // 字下げが幅の半分以上になると本文の幅が取れないので、その場合は字下げしない。
@@ -232,10 +233,6 @@ const noEndChars = "([{（［｛〔〈《「『【〘〖〝‘“｟«"
 func isNoStart(r rune) bool { return strings.ContainsRune(noStartChars, r) }
 func isNoEnd(r rune) bool   { return strings.ContainsRune(noEndChars, r) }
 
-func isAlnum(r rune) bool {
-	return r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9'
-}
-
 // canBreakBetween は、空白以外の 2 文字 a, b の間で改行してよいかを返す。
 func canBreakBetween(a, b cell) bool {
 	if isNoStart(b.first) || isNoEnd(a.last) {
@@ -245,11 +242,9 @@ func canBreakBetween(a, b cell) bool {
 	if a.width == 2 || b.width == 2 {
 		return true
 	}
-	// 英文のハイフンの後は改行してよい (glamour 標準の挙動に合わせる)
-	if a.last == '-' && isAlnum(b.first) {
-		return true
-	}
-	// それ以外 (英単語・数字・URL の途中) は改行しない
+	// それ以外 (英単語・数字・URL の途中) は改行しない。
+	// ハイフンの後も改行しない: 日付 (2026-11-20)・電話番号・URL が途中で切れると読みにくいため
+	// (1 行に収まらないほど長い場合だけ wrapLine が文字単位で切る)
 	return false
 }
 

@@ -58,6 +58,16 @@ func TestWrapParagraphKeepsEnglishWordsWhole(t *testing.T) {
 	}
 }
 
+func TestWrapParagraphKeepsHyphenatedNumbers(t *testing.T) {
+	// 日付・電話番号・ハイフン入りの語はハイフンの後で切らない
+	for _, token := range []string{"2026-11-20", "090-1234-5678", "foo-bar"} {
+		out := wrapParagraph("あいうえおかきく"+token+"です", 20)
+		if !strings.Contains(stripEscapes(out), token) {
+			t.Errorf("%s was split: %q", token, plainLines(out))
+		}
+	}
+}
+
 func TestWrapParagraphKinsoku(t *testing.T) {
 	tests := []struct {
 		name string
@@ -138,6 +148,7 @@ func TestWrapLinesHangingIndentForLists(t *testing.T) {
 		{name: "nested bullet", line: "    • " + strings.Repeat("あ", 30), indent: "      "},
 		{name: "ordered", line: "12. " + strings.Repeat("あ", 30), indent: "    "},
 		{name: "task", line: "[✓] " + strings.Repeat("あ", 30), indent: "    "},
+		{name: "task in ascii style", line: "[x] " + strings.Repeat("あ", 30), indent: "    "},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
